@@ -806,53 +806,8 @@
       transition: opacity .25s;
     }
 
-    .fs-btn {
-      position: absolute;
-      bottom: 12px;
-      right: 52px;
-      z-index: 5;
-      width: 34px;
-      height: 34px;
-      border-radius: 50%;
-      border: none;
-      background: rgba(0, 0, 0, 0.5);
-      color: #fff;
-      cursor: pointer;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      opacity: .55;
-      transition: opacity .25s;
-    }
-
-    /* ─── PSEUDO FULLSCREEN FALLBACK ─── */
-    .media-box.pseudo-fullscreen {
-      position: fixed !important;
-      top: 0 !important;
-      left: 0 !important;
-      width: 100vw !important;
-      height: 100vh !important;
-      max-width: 100vw !important;
-      max-height: 100vh !important;
-      z-index: 999999 !important;
-      background: #000 !important;
-      aspect-ratio: auto !important;
-      border-radius: 0 !important;
-      margin: 0 !important;
-      padding: 0 !important;
-    }
-
-    .media-box.pseudo-fullscreen .media-body video {
-      width: 100% !important;
-      height: 100% !important;
-      object-fit: contain !important;
-      border-radius: 0 !important;
-    }
-
     .media-box:hover .mute-btn,
-    .media-box:hover .fs-btn,
-    .media-box:focus-within .mute-btn,
-    .media-box:focus-within .fs-btn {
+    .media-box:focus-within .mute-btn {
       opacity: 1;
     }
 
@@ -1858,7 +1813,7 @@
     </div>
   </section>
 
-  <div class="divider"></div>
+  <div class="divider reveal"></div>
 
   <!-- ─── WHAT'S NEW ─── -->
   <section id="whats-new" class="wrap">
@@ -1986,7 +1941,7 @@
     </div>
   </section>
 
-  <div class="divider"></div>
+  <div class="divider reveal"></div>
 
   <!-- ─── ANIMATION MODES ─── -->
   <section id="modes" class="wrap">
@@ -2035,7 +1990,7 @@
     </div>
   </section>
 
-  <div class="divider"></div>
+  <div class="divider reveal"></div>
 
   <!-- ─── FEATURES ─── -->
   <section id="audience" class="wrap">
@@ -2063,7 +2018,7 @@
     </div>
   </section>
 
-  <div class="divider"></div>
+  <div class="divider reveal"></div>
 
   <section id="features" class="wrap">
     <div class="reveal">
@@ -2143,7 +2098,7 @@
 
   </section>
 
-  <div class="divider"></div>
+  <div class="divider reveal"></div>
 
   <!-- Value line -->
   <section class="wrap">
@@ -2151,7 +2106,7 @@
       Bones, ARKit, batch dialogue, and post-processing tools in one workflow.</p>
   </section>
 
-  <div class="divider"></div>
+  <div class="divider reveal"></div>
 
   <!-- Changelog -->
   <section id="changelog" class="wrap">
@@ -2232,7 +2187,7 @@
     </div>
   </section>
 
-  <div class="divider"></div>
+  <div class="divider reveal"></div>
 
   <!-- ─── HOW IT WORKS ─── -->
   <section id="how" class="wrap">
@@ -2256,7 +2211,7 @@
     </div>
   </section>
 
-  <div class="divider"></div>
+  <div class="divider reveal"></div>
 
 
 
@@ -2309,21 +2264,28 @@
       <h2 class="stitle">Thanks To</h2>
     </div>
     <div class="credits-list reveal">
-      <p>"<a href="https://skfb.ly/oysZF" target="_blank" rel="noopener noreferrer">character_02</a>" by BuuMya is licensed under Creative Commons Attribution (Sketchfab).</p>
-      <p>"<a href="https://blendswap.com/blend/12958" target="_blank" rel="noopener noreferrer">2D mouth with shape keys phonemes</a>" by myname, from BlendSwap.com (BlendSwap).</p>
-      <p>"<a href="https://studio.blender.org/characters/ellie/v1/" target="_blank" rel="noopener noreferrer">Ellie - Character Rig</a>" from Blender Studio (Character Link).</p>
-      <p>"<a href="https://studio.blender.org/characters/victoria/v1/" target="_blank" rel="noopener noreferrer">Victoria - Character Rig</a>" from Blender Studio (Character Link) (Temporarily displayed in the video).</p>
+      <p>"<a href="https://skfb.ly/oysZF" target="_blank" rel="noopener noreferrer">character_02</a>" by BuuMya is licensed under Creative Commons Attribution <a href="https://skfb.ly/oysZF" target="_blank" rel="noopener noreferrer">(Sketchfab)</a>.</p>
+      <p>"<a href="https://blendswap.com/blend/12958" target="_blank" rel="noopener noreferrer">2D mouth with shape keys phonemes</a>" by myname, from <a href="https://blendswap.com/blend/12958" target="_blank" rel="noopener noreferrer">BlendSwap.com</a> <a href="https://blendswap.com/blend/12958" target="_blank" rel="noopener noreferrer">(BlendSwap)</a>.</p>
+      <p>"<a href="https://studio.blender.org/characters/ellie/v1/" target="_blank" rel="noopener noreferrer">Ellie - Character Rig</a>" from Blender Studio <a href="https://studio.blender.org/characters/ellie/v1/" target="_blank" rel="noopener noreferrer">(Character Link)</a>.</p>
+      <p>"<a href="https://studio.blender.org/characters/victoria/v1/" target="_blank" rel="noopener noreferrer">Victoria - Character Rig</a>" from Blender Studio <a href="https://studio.blender.org/characters/victoria/v1/" target="_blank" rel="noopener noreferrer">(Character Link)</a> (Temporarily displayed in the video).</p>
+      <p>Song: <a href="https://www.youtube.com/watch?v=wMBNp0ox6BQ" target="_blank" rel="noopener noreferrer">LAKEY INSPIRED - Going Up</a></p>
     </div>
     <p class="sdesc reveal" style="margin-top:24px; margin-bottom:0; max-width:none">To allow characters to be used for demonstration of the tool.</p>
     <div class="note-block reveal" style="margin-top:24px">
       <h4>Important</h4>
-      <p>The characters used in demonstrations and examples are not included with this addon. If you want to test with similar characters, you can download them from the sources listed in the "Thanks to" section above.</p>
+      <p>The characters, music, and other files used in demonstrations and examples are not included with this addon. If you want to test with similar assets, you can download them from the sources listed in the "Thanks to" section above.</p>
     </div>
   </section>
 
-  <!-- ─── FOOTER ─── -->
-  <footer>
+  <div class="divider reveal"></div>
+
+  <section class="wrap" style="text-align:center">
     <p class="foot-thanks reveal"><em>Thank you!</em></p>
+  </section>
+
+  <div class="divider reveal"></div>
+
+  <footer style="border-top:none">
     <div class="foot-buttons reveal">
       <a href="https://www.youtube.com/@panim_official" class="foot-cta" target="_blank"
         rel="noopener noreferrer">YouTube</a>
@@ -2565,112 +2527,7 @@
       });
     });
 
-    /* ─── Fullscreen toggle for demo videos ─── */
-    (function() {
-      const fsEnterIcon = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 3 21 3 21 9"/><polyline points="9 21 3 21 3 15"/><line x1="21" y1="3" x2="14" y2="10"/><line x1="3" y1="21" x2="10" y2="14"/></svg>';
-      const fsExitIcon = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="4 14 10 14 10 20"/><polyline points="20 10 14 10 14 4"/><line x1="14" y1="10" x2="21" y2="3"/><line x1="10" y1="14" x2="3" y2="21"/></svg>';
 
-      function enterPseudoFullscreen(box, video, btn) {
-        box.dataset.fsAspect = getComputedStyle(box).aspectRatio;
-        box.classList.add('pseudo-fullscreen');
-        if (video) video.style.objectFit = 'contain';
-        if (btn) btn.innerHTML = fsExitIcon;
-      }
-
-      function exitPseudoFullscreen(box, video, btn) {
-        box.classList.remove('pseudo-fullscreen');
-        if (video) video.style.objectFit = 'cover';
-        if (btn) btn.innerHTML = fsEnterIcon;
-        delete box.dataset.fsAspect;
-      }
-
-      document.querySelectorAll('.media-body').forEach(body => {
-        const video = body.querySelector('video');
-        if (!video) return;
-        const box = body.closest('.media-box');
-        if (!box) return;
-        const btn = document.createElement('button');
-        btn.className = 'fs-btn';
-        btn.setAttribute('aria-label', 'Toggle fullscreen');
-        btn.innerHTML = fsEnterIcon;
-        box.appendChild(btn);
-
-        btn.addEventListener('click', (e) => {
-          e.stopPropagation();
-
-          // If already in pseudo-fullscreen, exit it
-          if (box.classList.contains('pseudo-fullscreen')) {
-            exitPseudoFullscreen(box, video, btn);
-            return;
-          }
-
-          // If already in native fullscreen, exit it
-          if (document.fullscreenElement) {
-            document.exitFullscreen();
-            return;
-          }
-
-          // Pre-check if fullscreen is allowed by document policy
-          if (!document.fullscreenEnabled) {
-            enterPseudoFullscreen(box, video, btn);
-            return;
-          }
-
-          // Try native fullscreen
-          box.dataset.fsAspect = getComputedStyle(box).aspectRatio;
-          box.style.aspectRatio = 'auto';
-          box.style.width = '100%';
-          box.style.height = '100%';
-          box.style.maxWidth = '100%';
-          box.style.maxHeight = '100%';
-          video.style.objectFit = 'contain';
-          btn.innerHTML = fsExitIcon;
-
-          box.requestFullscreen().catch(err => {
-            console.warn("Native fullscreen failed, falling back to pseudo-fullscreen:", err);
-            // Restore native styles
-            box.style.aspectRatio = '';
-            box.style.width = '';
-            box.style.height = '';
-            box.style.maxWidth = '';
-            box.style.maxHeight = '';
-            // Fallback to inline pseudo-fullscreen
-            enterPseudoFullscreen(box, video, btn);
-          });
-        });
-      });
-
-      // Escape key handler for pseudo-fullscreen
-      window.addEventListener('keydown', (e) => {
-        if (e.key === 'Escape') {
-          document.querySelectorAll('.media-box.pseudo-fullscreen').forEach(box => {
-            const video = box.querySelector('video');
-            const btn = box.querySelector('.fs-btn');
-            exitPseudoFullscreen(box, video, btn);
-          });
-        }
-      });
-
-      // Handle native fullscreen change events
-      document.addEventListener('fullscreenchange', () => {
-        if (!document.fullscreenElement) {
-          document.querySelectorAll('.media-box[data-fs-aspect]').forEach(box => {
-            if (!box.classList.contains('pseudo-fullscreen')) {
-              box.style.aspectRatio = box.dataset.fsAspect;
-              box.style.width = '';
-              box.style.height = '';
-              box.style.maxWidth = '';
-              box.style.maxHeight = '';
-              const video = box.querySelector('video');
-              if (video) video.style.objectFit = 'cover';
-              const btn = box.querySelector('.fs-btn');
-              if (btn) btn.innerHTML = fsEnterIcon;
-              delete box.dataset.fsAspect;
-            }
-          });
-        }
-      });
-    })();
 
     /* Cursor-following glow for all static cards */
     document.querySelectorAll('.mode-card, .audience-card, .step-card, .req-card, .media-box, .wn-tab, .trust-pill, .foot-cta, .discount-code').forEach(card => {
