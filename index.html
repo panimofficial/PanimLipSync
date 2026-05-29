@@ -1,0 +1,2454 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Panim LipSync, AI Lip Sync for Blender</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link
+    href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,700;9..144,900&family=Outfit:wght@300;400;500;600;700&display=swap"
+    rel="stylesheet" />
+  <style>
+    *,
+    *::before,
+    *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    :root {
+      --gold: #9B6A10;
+      --gold2: #7A5010;
+      --gold-dim: rgba(155, 106, 16, 0.15);
+      --green: #267A50;
+      --red: #B83030;
+      --bg: #f0e8de;
+      --text: #1c1410;
+      --muted: #4a3828;
+      --dim: #7a6555;
+
+      --glass-bg: linear-gradient(145deg, rgba(255, 255, 255, 0.62) 0%, rgba(255, 255, 255, 0.32) 100%);
+      --glass-border: 1px solid rgba(255, 255, 255, 0.75);
+      --glass-top: rgba(255, 255, 255, 0.95);
+      --glass-shadow: 0 4px 28px rgba(120, 70, 40, 0.12), inset 0 1px 0 rgba(255, 255, 255, 0.85);
+      --radius: 14px;
+    }
+
+    html {
+      scroll-behavior: smooth;
+    }
+
+    body {
+      background:
+        radial-gradient(ellipse 70% 40% at 20% 10%, rgba(232, 168, 130, 0.18) 0%, transparent 50%),
+        radial-gradient(ellipse 60% 35% at 85% 5%, rgba(235, 184, 136, 0.14) 0%, transparent 50%),
+        radial-gradient(ellipse 50% 30% at 50% 95%, rgba(232, 200, 168, 0.12) 0%, transparent 50%),
+        #faf8f5;
+      color: var(--text);
+      font-family: 'Outfit', system-ui, sans-serif;
+      font-size: 16.5px;
+      line-height: 1.7;
+      -webkit-font-smoothing: antialiased;
+      overflow-x: hidden;
+    }
+
+    /* ─── GRAIN OVERLAY ─── */
+    #marble-bg {
+      position: fixed;
+      inset: 0;
+      z-index: 0;
+      pointer-events: none;
+      overflow: hidden;
+    }
+
+    /* grain texture */
+    #marble-bg::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='g'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.68' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23g)' opacity='0.048'/%3E%3C/svg%3E");
+      opacity: 1;
+    }
+
+    /* All real content sits above marble */
+    body>*:not(#marble-bg) {
+      position: relative;
+      z-index: 1;
+    }
+
+    /* ─── GLASS MIXIN ─── */
+    .glass {
+      background: var(--glass-bg);
+      border: var(--glass-border);
+      border-top-color: var(--glass-top);
+      border-left-color: rgba(255, 255, 255, 0.14);
+      border-radius: var(--radius);
+      box-shadow: var(--glass-shadow);
+      backdrop-filter: blur(14px);
+      -webkit-backdrop-filter: blur(14px);
+    }
+
+    /* ─── NAV ─── */
+    #nav {
+      position: sticky;
+      top: 0;
+      z-index: 900;
+      background: rgba(240, 230, 220, 0.72);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      border-bottom: 1px solid rgba(255, 255, 255, 0.55);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 20px;
+      height: 52px;
+      transition: box-shadow .3s;
+    }
+
+    @media (min-width: 681px) {
+      #nav {
+        padding: 0 36px;
+      }
+    }
+
+    #nav.scrolled {
+      box-shadow: 0 4px 32px rgba(150, 80, 50, 0.18);
+    }
+
+    .nav-logo {
+      font-family: 'Fraunces', Georgia, serif;
+      font-size: 14px;
+      font-weight: 700;
+      color: var(--gold);
+      text-decoration: none;
+      letter-spacing: 0.2px;
+    }
+
+    .nav-links {
+      display: flex;
+      gap: 2px;
+    }
+
+    .nav-links a {
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--muted);
+      text-decoration: none;
+      padding: 6px 13px;
+      border-radius: 7px;
+      transition: color .2s, background .2s;
+    }
+
+    .nav-links a:hover {
+      color: var(--text);
+      background: rgba(155, 106, 16, 0.07);
+    }
+
+    @media (max-width: 680px) {
+      #nav {
+        padding: 0 14px;
+        height: 48px;
+      }
+
+      .nav-logo {
+        font-size: 12px;
+      }
+
+      .nav-links {
+        gap: 0;
+      }
+
+      .nav-links a {
+        padding: 5px 8px;
+        font-size: 12px;
+        white-space: nowrap;
+      }
+    }
+
+    /* ─── WRAP ─── */
+    .wrap {
+      max-width: 900px;
+      margin: 0 auto;
+      padding: 0 40px;
+    }
+
+    /* ─── HERO ─── */
+    #hero {
+      text-align: center;
+      padding: 120px 40px 100px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .hero-glow {
+      position: absolute;
+      inset: 0;
+      background: radial-gradient(ellipse 60% 50% at 50% -5%, rgba(255, 255, 255, 0.45) 0%, transparent 60%);
+      pointer-events: none;
+      z-index: 1;
+    }
+
+    .hero-video {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      opacity: 0.30;
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    .hero-content {
+      position: relative;
+      z-index: 2;
+    }
+
+    h1 {
+      font-family: 'Fraunces', Georgia, serif;
+      font-size: clamp(50px, 9vw, 80px);
+      font-weight: 900;
+      line-height: 1.05;
+      letter-spacing: -2px;
+      margin-bottom: 22px;
+      padding-bottom: 0.15em;
+      background: linear-gradient(120deg, #1c1410 0%, #8a5a10 32%, #9B6A10 50%, #c79a34 64%, #1c1410 100%);
+      background-size: 240% 100%;
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      animation: fadein .6s .1s ease both, titleGradient 7s ease-in-out .7s infinite;
+    }
+
+    .hero-sub {
+      font-size: 17px;
+      color: var(--muted);
+      max-width: 480px;
+      margin: 0 auto;
+      line-height: 1.75;
+      animation: fadein .6s .2s ease both;
+    }
+
+    .trust-strip {
+      max-width: 900px;
+      margin: 42px auto 0;
+      padding: 0 40px;
+      position: relative;
+      z-index: 3;
+    }
+
+    .trust-list {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 10px;
+    }
+
+    .trust-pill {
+      display: inline-flex;
+      align-items: center;
+      min-height: 34px;
+      padding: 8px 15px;
+      border: 1px solid rgba(255, 255, 255, 0.55);
+      border-radius: 10px;
+      background: linear-gradient(145deg, rgba(255, 255, 255, 0.62) 0%, rgba(255, 255, 255, 0.32) 100%);
+      box-shadow: 0 4px 28px rgba(120, 70, 40, 0.12), inset 0 1px 0 rgba(255, 255, 255, 0.85);
+      color: var(--muted);
+      font-size: 13px;
+      font-weight: 500;
+      line-height: 1.25;
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      position: relative;
+      overflow: hidden;
+      transition: border-color .3s, box-shadow .3s, color .3s, background .3s, transform .2s;
+    }
+
+    .trust-pill::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: radial-gradient(circle at var(--mx, 50%) var(--my, 50%), rgba(155, 106, 16, 0.10) 0%, transparent 55%);
+      pointer-events: none;
+      opacity: 0;
+      transition: opacity .3s;
+      z-index: 1;
+    }
+
+    .trust-pill:hover::before {
+      opacity: 1;
+    }
+
+    .trust-pill:hover {
+      border-color: rgba(155, 106, 16, 0.35);
+      box-shadow: 0 10px 40px rgba(155, 106, 16, 0.16), inset 0 1px 0 rgba(255, 255, 255, 0.95);
+      transform: translateY(-2px);
+      color: var(--text);
+    }
+
+    @keyframes fadein {
+      from {
+        opacity: 0;
+        transform: translateY(12px);
+      }
+
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    @keyframes titleGradient {
+
+      0%,
+      100% {
+        background-position: 0% 50%;
+      }
+
+      50% {
+        background-position: 100% 50%;
+      }
+    }
+
+    @keyframes shimmer {
+      0%, 100% { background-position: 200% center; }
+      50% { background-position: -200% center; }
+    }
+
+    /* ─── DIVIDER ─── */
+    .divider {
+      height: 1px;
+      background: linear-gradient(to right, transparent, rgba(0, 0, 0, 0.1) 30%, rgba(120, 70, 20, 0.2) 50%, rgba(0, 0, 0, 0.1) 70%, transparent);
+      margin: 60px 40px;
+    }
+
+    .value-line {
+      max-width: 760px;
+      margin: 0 auto;
+      color: var(--muted);
+      font-size: 16px;
+      line-height: 1.8;
+      text-align: center;
+    }
+
+    .value-line strong {
+      color: var(--gold2);
+      font-weight: 600;
+    }
+
+    /* ─── SECTION LABELS ─── */
+    section {
+      padding: 0 40px;
+    }
+
+    .label {
+      font-family: 'Outfit', system-ui, sans-serif;
+      font-size: 10px;
+      font-weight: 500;
+      letter-spacing: 2.2px;
+      text-transform: uppercase;
+      display: inline-block;
+      margin-bottom: 14px;
+      padding: 3px 10px;
+      border-radius: 4px;
+    }
+
+    .l-green {
+      color: #207a50;
+      background: rgba(32, 122, 80, 0.08);
+      border: 1px solid rgba(32, 122, 80, 0.25);
+    }
+
+    .l-gold {
+      color: #7A4A08;
+      background: rgba(122, 74, 8, 0.08);
+      border: 1px solid rgba(122, 74, 8, 0.22);
+    }
+
+    .l-new {
+      color: #1a6640;
+      background: rgba(26, 102, 64, 0.07);
+      border: 1px solid rgba(26, 102, 64, 0.22);
+    }
+
+    .l-red {
+      color: #9a2020;
+      background: rgba(154, 32, 32, 0.07);
+      border: 1px solid rgba(154, 32, 32, 0.22);
+    }
+
+    h2.stitle {
+      font-family: 'Fraunces', Georgia, serif;
+      font-size: clamp(26px, 4vw, 34px);
+      font-weight: 700;
+      color: var(--gold2);
+      line-height: 1.2;
+      margin-bottom: 10px;
+    }
+
+    h2.stitle em {
+      color: var(--gold);
+      font-style: normal;
+    }
+
+    .sdesc {
+      font-size: 16px;
+      color: var(--muted);
+      max-width: 560px;
+      line-height: 1.8;
+      margin-bottom: 48px;
+    }
+
+    /* ─── FEATURE ROW ─── */
+    .frow {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 64px;
+      margin-bottom: 72px;
+    }
+
+    .ftitle {
+      grid-column: 1 / -1;
+      font-family: 'Fraunces', Georgia, serif;
+      font-size: 25px;
+      font-weight: 700;
+      color: var(--gold2);
+      margin: 0 0 12px;
+      line-height: 1.25;
+    }
+
+    .frow .ftext {
+      grid-column: 1;
+      grid-row: 2;
+    }
+
+    .frow .media-box {
+      grid-column: 2;
+      grid-row: 2;
+    }
+
+    .frow.rev .ftext {
+      grid-column: 2;
+      grid-row: 2;
+    }
+
+    .frow.rev .media-box {
+      grid-column: 1;
+      grid-row: 2;
+    }
+
+    /* Features: desktop matches index.html, mobile stacks title, demo, copy */
+    #features .frow {
+      grid-template-columns: 1fr 1fr;
+      column-gap: 56px;
+      row-gap: 0;
+      align-items: center;
+    }
+
+    #features .feature-copy {
+      grid-column: 1;
+      grid-row: 1;
+      justify-self: start;
+      max-width: 360px;
+      text-align: left;
+    }
+
+    #features .frow .media-box {
+      grid-column: 2;
+      grid-row: 1;
+      justify-self: stretch;
+      align-self: center;
+      width: 100%;
+    }
+
+    #features .frow.rev .feature-copy {
+      grid-column: 2;
+    }
+
+    #features .frow.rev .media-box {
+      grid-column: 1;
+    }
+
+    #features .feature-copy .ftitle {
+      grid-column: auto;
+      margin-bottom: 12px;
+      text-align: left;
+    }
+
+    #features .feature-copy .ftext {
+      grid-column: auto;
+      grid-row: auto;
+      margin-top: 0;
+      text-align: left;
+    }
+
+    @media (max-width: 680px) {
+
+      .frow,
+      .frow.rev {
+        grid-template-columns: 1fr;
+        gap: 24px;
+        margin-bottom: 28px;
+      }
+
+      .frow .ftext,
+      .frow.rev .ftext,
+      .frow .media-box,
+      .frow.rev .media-box {
+        grid-column: auto;
+        grid-row: auto;
+      }
+
+      .frow .ftext {
+        margin-top: 16px;
+      }
+
+      #features .frow {
+        grid-template-columns: 1fr;
+        gap: 12px;
+        margin-bottom: 32px;
+      }
+
+      #features .feature-copy,
+      #features .frow.rev .feature-copy,
+      #features .frow .media-box,
+      #features .frow.rev .media-box {
+        grid-column: 1;
+        grid-row: auto;
+      }
+
+      #features .feature-copy {
+        display: contents;
+        max-width: none;
+      }
+
+      #features .feature-copy .ftitle,
+      #features .feature-copy .ftext {
+        text-align: left;
+      }
+
+      #features .feature-copy .ftitle {
+        order: 1;
+        margin-bottom: 0;
+      }
+
+      #features .frow .media-box {
+        order: 2;
+      }
+
+      #features .feature-copy .ftext {
+        order: 3;
+      }
+
+      #features .feature-copy .ftext {
+        margin-top: 0;
+      }
+
+      #features .frow .media-box {
+        justify-self: stretch;
+        align-self: auto;
+      }
+    }
+
+    .ftext p {
+      font-size: 15px;
+      color: var(--muted);
+      line-height: 1.8;
+      margin-bottom: 20px;
+    }
+
+    .ftext p:last-child {
+      margin-bottom: 0;
+    }
+
+    .checklist {
+      list-style: none;
+    }
+
+    .checklist li {
+      font-size: 14px;
+      color: var(--text);
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+      padding: 6px 0;
+      border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+    }
+
+    .checklist li:last-child {
+      border-bottom: none;
+    }
+
+    .checklist li::before {
+      content: '✓';
+      color: var(--gold);
+      font-weight: 700;
+      font-size: 12px;
+      flex-shrink: 0;
+      margin-top: 3px;
+    }
+
+    /* ─── MEDIA BOX ─── */
+    .media-box {
+      aspect-ratio: 1/1;
+      border-radius: var(--radius);
+      overflow: hidden;
+      position: relative;
+    }
+
+    .media-box.ratio-16-9 {
+      aspect-ratio: 16/9;
+    }
+
+    .media-box::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: radial-gradient(circle at var(--mx, 50%) var(--my, 50%), rgba(155, 106, 16, 0.10) 0%, transparent 55%);
+      pointer-events: none;
+      opacity: 0;
+      transition: opacity .3s;
+      z-index: 1;
+    }
+
+    .media-box:hover::before {
+      opacity: 1;
+    }
+
+    .media-bar {
+      display: none;
+    }
+
+    .dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+    }
+
+    .dr {
+      background: #ef4444;
+      opacity: .45;
+    }
+
+    .dy {
+      background: #f59e0b;
+      opacity: .45;
+    }
+
+    .dg {
+      background: #10b981;
+      opacity: .45;
+    }
+
+    .media-name {
+      font-family: 'Outfit', system-ui, sans-serif;
+      font-size: 10px;
+      color: var(--muted);
+      letter-spacing: .5px;
+      margin-left: auto;
+    }
+
+    /* Empty media body, user fills with video/gif */
+    .media-body {
+      background: transparent;
+      height: 100%;
+    }
+
+    .media-body video {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+    }
+
+    .mute-btn {
+      position: absolute;
+      bottom: 12px;
+      right: 12px;
+      z-index: 5;
+      width: 34px;
+      height: 34px;
+      border-radius: 50%;
+      border: none;
+      background: rgba(0, 0, 0, 0.5);
+      color: #fff;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      opacity: .55;
+      transition: opacity .25s;
+    }
+
+    .fs-btn {
+      position: absolute;
+      bottom: 12px;
+      right: 52px;
+      z-index: 5;
+      width: 34px;
+      height: 34px;
+      border-radius: 50%;
+      border: none;
+      background: rgba(0, 0, 0, 0.5);
+      color: #fff;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      opacity: .55;
+      transition: opacity .25s;
+    }
+
+    .media-box:hover .mute-btn,
+    .media-box:hover .fs-btn,
+    .media-box:focus-within .mute-btn,
+    .media-box:focus-within .fs-btn {
+      opacity: 1;
+    }
+
+    .media-body:empty::after {
+      content: 'Demo preview coming soon';
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      height: 100%;
+      font-family: 'Outfit', system-ui, sans-serif;
+      font-size: 11px;
+      color: var(--dim);
+      letter-spacing: 0.8px;
+      text-transform: uppercase;
+      border: 2px dashed rgba(155, 106, 16, 0.35);
+      border-radius: 8px;
+    }
+
+    /* ─── MODES GRID ─── */
+    .modes-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 18px;
+      padding-bottom: 32px;
+    }
+
+    @media (max-width: 680px) {
+      .modes-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .mode-card {
+      background: linear-gradient(160deg, rgba(255, 255, 255, 0.05) 0%, rgba(255, 255, 255, 0.015) 100%);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-top-color: rgba(255, 255, 255, 0.2);
+      border-radius: var(--radius);
+      padding: 26px 22px 24px;
+      box-shadow: var(--glass-shadow);
+      transition: transform .3s, box-shadow .3s, border-color .3s;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .mode-card::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: radial-gradient(circle at var(--mx, 50%) var(--my, 50%), rgba(155, 106, 16, 0.10) 0%, transparent 55%);
+      pointer-events: none;
+      opacity: 0;
+      transition: opacity .3s;
+      z-index: 1;
+    }
+
+    .mode-card:hover::before {
+      opacity: 1;
+    }
+
+    .mode-card:hover {
+      transform: translateY(-4px);
+      border-color: rgba(155, 106, 16, 0.35);
+      box-shadow: 0 10px 36px rgba(155, 106, 16, 0.12), inset 0 1px 0 rgba(255, 255, 255, 0.95);
+    }
+
+    .mode-card h4 {
+      font-family: 'Fraunces', Georgia, serif;
+      font-size: 18px;
+      font-weight: 700;
+      color: var(--gold);
+      margin-bottom: 18px;
+    }
+
+    .mode-list {
+      list-style: none;
+      font-size: 14px;
+      color: var(--muted);
+    }
+
+    .mode-list li {
+      display: flex;
+      align-items: center;
+      gap: 9px;
+      padding: 5px 0;
+      border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+    }
+
+    .mode-list li:last-child {
+      border-bottom: none;
+    }
+
+    .mode-list li::before {
+      content: '';
+      width: 4px;
+      height: 4px;
+      background: var(--green);
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+
+    /* ─── SHARED FEATURES ROW (above mode cards) ─── */
+    .shared-card {
+      background: linear-gradient(160deg, rgba(255, 255, 255, 0.05) 0%, rgba(255, 255, 255, 0.015) 100%);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-top-color: rgba(255, 255, 255, 0.2);
+      border-radius: var(--radius);
+      padding: 22px 22px 18px;
+      margin-bottom: 24px;
+      box-shadow: var(--glass-shadow);
+      text-align: center;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .shared-card::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: radial-gradient(circle at var(--mx, 50%) var(--my, 50%), rgba(155, 106, 16, 0.10) 0%, transparent 55%);
+      pointer-events: none;
+      opacity: 0;
+      transition: opacity .3s;
+      z-index: 1;
+    }
+
+    .shared-card:hover::before {
+      opacity: 1;
+    }
+
+    .shared-label {
+      font-family: 'Fraunces', Georgia, serif;
+      font-size: 14px;
+      font-weight: 700;
+      color: var(--gold);
+      margin-bottom: 14px;
+      position: relative;
+      z-index: 2;
+    }
+
+    .shared-pills {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 8px;
+      position: relative;
+      z-index: 2;
+    }
+
+    .shared-pills .trust-pill {
+      background: linear-gradient(145deg, rgba(255, 255, 255, 0.50) 0%, rgba(255, 255, 255, 0.22) 100%);
+      border-color: rgba(255, 255, 255, 0.45);
+      box-shadow: 0 2px 12px rgba(120, 70, 40, 0.08), inset 0 1px 0 rgba(255, 255, 255, 0.75);
+      font-size: 12.5px;
+      padding: 6px 14px;
+      min-height: 30px;
+    }
+
+    .shared-pills .trust-pill:hover {
+      border-color: rgba(155, 106, 16, 0.35);
+      box-shadow: 0 6px 24px rgba(155, 106, 16, 0.12), inset 0 1px 0 rgba(255, 255, 255, 0.85);
+    }
+
+    /* ─── HOW IT WORKS ─── */
+    .audience-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 18px;
+      padding-bottom: 32px;
+    }
+
+    @media (max-width: 680px) {
+      .audience-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .audience-card {
+      background: var(--glass-bg);
+      border: var(--glass-border);
+      border-top-color: var(--glass-top);
+      border-radius: var(--radius);
+      padding: 24px 22px 22px;
+      box-shadow: var(--glass-shadow);
+      transition: transform .3s, box-shadow .3s, border-color .3s;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .audience-card::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: radial-gradient(circle at var(--mx, 50%) var(--my, 50%), rgba(155, 106, 16, 0.10) 0%, transparent 55%);
+      pointer-events: none;
+      opacity: 0;
+      transition: opacity .3s;
+      z-index: 1;
+    }
+
+    .audience-card:hover::before {
+      opacity: 1;
+    }
+
+    .audience-card:hover {
+      transform: translateY(-3px);
+      border-color: rgba(155, 106, 16, 0.35);
+      box-shadow: 0 10px 36px rgba(155, 106, 16, 0.12);
+    }
+
+    .audience-card h4 {
+      font-family: 'Fraunces', Georgia, serif;
+      font-size: 18px;
+      font-weight: 700;
+      color: var(--gold);
+      line-height: 1.25;
+      margin-bottom: 10px;
+    }
+
+    .audience-card p {
+      font-size: 14px;
+      color: var(--muted);
+      line-height: 1.75;
+    }
+
+    .steps {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 20px;
+      padding-bottom: 32px;
+    }
+
+    @media (max-width: 600px) {
+      .steps {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .step-card {
+      background: linear-gradient(160deg, rgba(255, 255, 255, 0.045) 0%, rgba(255, 255, 255, 0.012) 100%);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-top-color: rgba(255, 255, 255, 0.18);
+      border-radius: var(--radius);
+      padding: 26px 22px 24px;
+      box-shadow: var(--glass-shadow);
+      transition: transform .3s, box-shadow .3s, border-color .3s;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .step-card::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: radial-gradient(circle at var(--mx, 50%) var(--my, 50%), rgba(155, 106, 16, 0.10) 0%, transparent 55%);
+      pointer-events: none;
+      opacity: 0;
+      transition: opacity .3s;
+      z-index: 1;
+    }
+
+    .step-card:hover::before {
+      opacity: 1;
+    }
+
+    .step-card:hover {
+      transform: translateY(-4px);
+      border-color: rgba(155, 106, 16, 0.35);
+      box-shadow: 0 10px 36px rgba(155, 106, 16, 0.12);
+    }
+
+    .step-icon {
+      font-size: 22px;
+      margin-bottom: 14px;
+      display: block;
+    }
+
+    .step-card h4 {
+      font-family: 'Fraunces', Georgia, serif;
+      font-size: 17px;
+      font-weight: 700;
+      color: var(--gold);
+      margin-bottom: 8px;
+    }
+
+    .step-card p {
+      font-size: 14px;
+      color: var(--muted);
+      line-height: 1.75;
+    }
+
+    /* ─── REQUIREMENTS ─── */
+    .req-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 16px;
+      padding-bottom: 32px;
+    }
+
+    @media (max-width: 600px) {
+      .req-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .req-card {
+      background: var(--glass-bg);
+      border: var(--glass-border);
+      border-top-color: var(--glass-top);
+      border-radius: var(--radius);
+      padding: 22px 22px 20px;
+      box-shadow: var(--glass-shadow);
+      transition: transform .3s, box-shadow .3s, border-color .3s;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .req-card::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: radial-gradient(circle at var(--mx, 50%) var(--my, 50%), rgba(155, 106, 16, 0.10) 0%, transparent 55%);
+      pointer-events: none;
+      opacity: 0;
+      transition: opacity .3s;
+      z-index: 1;
+    }
+
+    .req-card:hover::before {
+      opacity: 1;
+    }
+
+    .req-card:hover {
+      transform: translateY(-2px);
+      border-color: rgba(155, 106, 16, 0.35);
+      box-shadow: 0 10px 36px rgba(155, 106, 16, 0.12);
+    }
+
+    .req-card h4 {
+      font-family: 'Outfit', system-ui, sans-serif;
+      font-size: 11px;
+      font-weight: 500;
+      letter-spacing: 1.8px;
+      text-transform: uppercase;
+      color: var(--gold2);
+      margin-bottom: 14px;
+    }
+
+    .req-list {
+      list-style: none;
+      font-size: 14px;
+      color: var(--muted);
+    }
+
+    .req-list li {
+      padding: 5px 0;
+      border-bottom: 1px solid rgba(0, 0, 0, 0.07);
+      display: flex;
+      gap: 10px;
+    }
+
+    .req-list li:last-child {
+      border-bottom: none;
+    }
+
+    .req-list li b {
+      color: var(--text);
+      font-weight: 500;
+      flex-shrink: 0;
+    }
+
+    @media (max-width: 680px) {
+      .req-list li {
+        flex-direction: column;
+        gap: 2px;
+        padding: 10px 0;
+      }
+
+      .req-list li b {
+        font-size: 14.5px;
+      }
+    }
+
+    /* ─── CHANGELOG MARQUEE ─── */
+    .cl-scroll-area {
+      overflow: hidden;
+      padding: 18px 0 32px 0;
+      cursor: grab;
+      user-select: none;
+      -webkit-mask-image: linear-gradient(to right, transparent 0%, black 8%, black 92%, transparent 100%);
+      mask-image: linear-gradient(to right, transparent 0%, black 8%, black 92%, transparent 100%);
+    }
+
+    .cl-wrap {
+      position: relative;
+    }
+
+    .cl-prev,
+    .cl-next {
+      display: none;
+      position: absolute;
+      top: 50%;
+      transform: translateY(-50%);
+      z-index: 5;
+      width: 38px;
+      height: 38px;
+      border-radius: 10px;
+      border: 1px solid rgba(255, 255, 255, 0.65);
+      background: linear-gradient(145deg, rgba(255, 255, 255, 0.78) 0%, rgba(255, 255, 255, 0.42) 100%);
+      box-shadow: 0 8px 28px rgba(120, 70, 40, 0.16), inset 0 1px 0 rgba(255, 255, 255, 0.9);
+      color: var(--gold2);
+      font-size: 24px;
+      line-height: 1;
+      cursor: pointer;
+      backdrop-filter: blur(14px);
+      -webkit-backdrop-filter: blur(14px);
+    }
+
+    .cl-prev {
+      left: 0;
+    }
+
+    .cl-next {
+      right: 0;
+    }
+
+    .cl-scroll-area:active {
+      cursor: grabbing;
+    }
+
+    .cl-track {
+      display: flex;
+      gap: 18px;
+      width: max-content;
+      will-change: transform;
+    }
+
+    .cl-card {
+      width: 220px;
+      flex-shrink: 0;
+      height: auto;
+      background:
+        var(--glass-bg),
+        radial-gradient(circle at var(--mx, 50%) var(--my, 50%), rgba(155, 106, 16, 0.10) 0%, transparent 55%);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border: 1px solid rgba(255, 255, 255, 0.55);
+      border-top-color: rgba(255, 255, 255, 0.85);
+      border-radius: var(--radius);
+      padding: 18px;
+      display: flex;
+      flex-direction: column;
+      position: relative;
+      transition: border-color .3s, box-shadow .3s;
+      cursor: inherit;
+    }
+
+    .cl-card:hover {
+      border-color: rgba(155, 106, 16, 0.35);
+      box-shadow: 0 10px 36px rgba(155, 106, 16, 0.12);
+    }
+
+    .cl-card-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 6px;
+    }
+
+    .cl-card-num {
+      font-family: 'Outfit', system-ui, sans-serif;
+      font-size: 10px;
+      font-weight: 500;
+      letter-spacing: 0.15em;
+      color: var(--dim);
+      opacity: 0.6;
+    }
+
+    .cl-card-badge {
+      font-family: 'Outfit', system-ui, sans-serif;
+      font-size: 8px;
+      font-weight: 500;
+      letter-spacing: 1.1px;
+      text-transform: uppercase;
+      padding: 2px 7px;
+      border-radius: 4px;
+    }
+
+    .cl-card h4 {
+      font-family: 'Fraunces', Georgia, serif;
+      font-size: 16px;
+      font-weight: 700;
+      color: var(--gold2);
+      line-height: 1.25;
+      margin: 0 0 8px;
+      white-space: nowrap;
+    }
+
+    .cl-card p {
+      font-size: 13px;
+      color: var(--muted);
+      line-height: 1.65;
+      margin: 0;
+    }
+
+    @media (max-width: 640px) {
+      .cl-wrap {
+        padding-right: 28px;
+        padding-left: 28px;
+      }
+
+      .cl-prev,
+      .cl-next {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+
+      .cl-scroll-area {
+        overflow-x: auto;
+        cursor: auto;
+        -webkit-mask-image: none;
+        mask-image: none;
+        -webkit-overflow-scrolling: touch;
+        scrollbar-width: none;
+      }
+
+      .cl-scroll-area::-webkit-scrollbar {
+        display: none;
+      }
+
+      .cl-static .cl-track {
+        transform: none !important;
+        will-change: auto;
+      }
+
+      .cl-card {
+        width: 190px;
+        padding: 14px;
+      }
+
+      .cl-card h4 {
+        font-size: 15px;
+      }
+
+      .cl-card p {
+        font-size: 12px;
+      }
+    }
+
+    /* ─── WHAT'S NEW TABS ─── */
+    .wn-tabs {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 40px;
+    }
+
+    .wn-tab-row {
+      display: flex;
+      gap: 10px;
+      justify-content: center;
+      position: relative;
+    }
+
+    .wn-tab-row::after {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: linear-gradient(
+        105deg,
+        transparent 0%,
+        transparent 40%,
+        rgba(155, 106, 16, 0.12) 50%,
+        transparent 60%,
+        transparent 100%
+      );
+      background-size: 200% 100%;
+      animation: shimmer 4.5s ease-in-out 0s infinite;
+      pointer-events: none;
+      border-radius: 10px;
+      z-index: 10;
+    }
+
+    .wn-tab {
+      padding: 10px 20px;
+      border-radius: 10px;
+      border: 1px solid rgba(255, 255, 255, 0.62);
+      background: linear-gradient(145deg, rgba(255, 255, 255, 0.68) 0%, rgba(255, 255, 255, 0.38) 100%);
+      box-shadow: 0 6px 20px rgba(120, 70, 40, 0.18), inset 0 1px 0 rgba(255, 255, 255, 0.9);
+      backdrop-filter: blur(14px);
+      -webkit-backdrop-filter: blur(14px);
+      font-family: 'Outfit', system-ui, sans-serif;
+      font-size: 14px;
+      font-weight: 500;
+      color: var(--muted);
+      cursor: pointer;
+      transition: border-color .25s, box-shadow .25s, color .25s, background .25s, transform .15s;
+      position: relative;
+      overflow: hidden;
+      user-select: none;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    .wn-tab::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: radial-gradient(circle at var(--mx, 50%) var(--my, 50%), rgba(155, 106, 16, 0.10) 0%, transparent 55%);
+      pointer-events: none;
+      opacity: 0;
+      transition: opacity .3s;
+      z-index: 1;
+    }
+
+    .wn-tab:hover::before {
+      opacity: 1;
+    }
+
+    .wn-tab:hover {
+      border-color: rgba(155, 106, 16, 0.4);
+      box-shadow: 0 12px 36px rgba(155, 106, 16, 0.22), inset 0 1px 0 rgba(255, 255, 255, 0.95);
+      transform: translateY(-3px);
+      color: var(--text);
+    }
+
+    .wn-tab:active {
+      transform: scale(0.96);
+      box-shadow: 0 4px 14px rgba(155, 106, 16, 0.14), inset 0 1px 0 rgba(255, 255, 255, 0.9);
+    }
+
+    .wn-tab.active {
+      border-color: rgba(155, 106, 16, 0.45);
+      background: rgba(250, 248, 245, 0.92);
+      color: var(--gold2);
+      box-shadow: inset 0 2px 8px rgba(120, 70, 40, 0.15), 0 1px 4px rgba(120, 70, 40, 0.06);
+      transform: translateY(0);
+      z-index: 11;
+    }
+
+    .wn-tab.active::before {
+      opacity: 0;
+    }
+
+    .wn-panel {
+      display: none;
+      animation: fadein .25s ease both;
+    }
+
+    .wn-panel.active {
+      display: block;
+    }
+
+    .wn-panel .frow {
+      gap: 80px;
+      margin-bottom: 56px;
+    }
+
+    .wn-panel .ftext {
+      padding-top: 18px;
+      padding-bottom: 8px;
+    }
+
+    @media (max-width: 680px) {
+      .wn-panel .frow {
+        gap: 32px;
+      }
+    }
+
+    @media (max-width: 680px) {
+
+      .wrap,
+      section {
+        padding: 0 20px;
+      }
+
+      .divider {
+        margin: 30px 20px;
+      }
+
+      .wn-tabs {
+        gap: 8px;
+      }
+
+      .wn-tab-row {
+        gap: 8px;
+      }
+
+      .wn-tab {
+        padding: 8px 14px;
+        font-size: 13px;
+      }
+
+      body {
+        font-size: 16.5px;
+      }
+
+      .ftext p,
+      .mode-list li,
+      .audience-card p,
+      .step-card p,
+      .req-list {
+        font-size: 14.5px;
+      }
+
+      .sdesc,
+      .value-line {
+        font-size: 16px;
+      }
+
+      .hero-sub {
+        font-size: 18px;
+      }
+
+      .trust-strip {
+        margin-top: 34px;
+        padding: 0 12px;
+      }
+
+      .trust-list {
+        justify-content: center;
+      }
+
+      .trust-pill {
+        font-size: 12.5px;
+      }
+    }
+
+    /* ─── NOTES ─── */
+    .note-block {
+      background: rgba(155, 106, 16, 0.10);
+      border: 1px solid rgba(155, 106, 16, 0.35);
+      border-radius: var(--radius);
+      padding: 22px 28px;
+      box-shadow: var(--glass-shadow);
+      transition: border-color .3s, box-shadow .3s;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .note-block::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 3px;
+      background: linear-gradient(to right, transparent, var(--gold) 25%, var(--gold2) 50%, var(--gold) 75%, transparent);
+      opacity: 0.85;
+      pointer-events: none;
+      z-index: 1;
+    }
+
+    .note-block:hover {
+      border-color: rgba(155, 106, 16, 0.45);
+      box-shadow: 0 10px 36px rgba(155, 106, 16, 0.12);
+    }
+
+    .note-block h4 {
+      font-size: 14px;
+      color: var(--gold2);
+      margin-bottom: 14px;
+    }
+
+    .note-block p {
+      font-size: 14px;
+      color: var(--muted);
+      line-height: 1.7;
+      margin-bottom: 10px;
+    }
+
+    .note-block p:last-child {
+      margin-bottom: 0;
+    }
+
+    .note-block p strong {
+      color: var(--text);
+      font-weight: 500;
+    }
+
+    /* ─── CREDITS ─── */
+    .credits-list p {
+      font-size: 14px;
+      color: var(--muted);
+      line-height: 1.75;
+      margin-bottom: 12px;
+    }
+
+    .credits-list p:last-child {
+      margin-bottom: 0;
+    }
+
+    .credits-list a {
+      color: var(--gold);
+      text-decoration: none;
+      font-weight: 500;
+    }
+
+    .credits-list a:hover {
+      text-decoration: underline;
+    }
+
+    @media (max-width: 680px) {
+      .note-block {
+        padding: 18px 22px;
+      }
+
+      .note-block h4 {
+        font-size: 13px;
+      }
+
+      .note-block p {
+        font-size: 13px;
+      }
+    }
+
+    /* ─── SCROLL REVEAL ─── */
+    .reveal {
+      opacity: 0;
+      transform: translateY(20px);
+      transition: opacity .6s ease, transform .6s ease;
+    }
+
+    .reveal.visible {
+      opacity: 1;
+      transform: translateY(0);
+    }
+
+    /* Staggered children reveal */
+    .stagger-reveal>* {
+      opacity: 0;
+      transform: translateY(20px);
+      transition: opacity .6s ease, transform .6s ease;
+    }
+
+    .stagger-reveal.visible>* {
+      opacity: 1;
+      transform: translateY(0);
+    }
+
+    .stagger-reveal.visible>*:nth-child(1) {
+      transition-delay: 0ms;
+    }
+
+    .stagger-reveal.visible>*:nth-child(2) {
+      transition-delay: 100ms;
+    }
+
+    .stagger-reveal.visible>*:nth-child(3) {
+      transition-delay: 200ms;
+    }
+
+    .stagger-reveal.visible>*:nth-child(4) {
+      transition-delay: 300ms;
+    }
+
+    .stagger-reveal.visible>*:nth-child(5) {
+      transition-delay: 400ms;
+    }
+
+    .stagger-reveal.visible>*:nth-child(6) {
+      transition-delay: 500ms;
+    }
+
+    .stagger-reveal.visible>*:nth-child(7) {
+      transition-delay: 600ms;
+    }
+
+    .stagger-reveal.visible>*:nth-child(8) {
+      transition-delay: 700ms;
+    }
+
+    /* ─── FOOTER ─── */
+    footer {
+      border-top: 1px solid rgba(0, 0, 0, 0.1);
+      padding: 52px 40px 80px;
+      /* Added extra bottom padding for a smooth fade */
+      text-align: center;
+      color: var(--dim);
+      font-size: 12px;
+      background: linear-gradient(to bottom, rgba(250, 248, 245, 0) 0%, #ffffff 100%);
+      position: relative;
+      z-index: 2;
+    }
+
+    .foot-thanks {
+      font-family: 'Outfit', system-ui, sans-serif;
+      font-size: 14px;
+      color: var(--gold);
+      margin-bottom: 20px;
+    }
+
+    footer .foot-cta {
+      display: inline-block;
+      font-family: 'Fraunces', Georgia, serif;
+      font-size: 16.5px;
+      font-weight: 700;
+      color: var(--gold2);
+      border: 1px solid rgba(255, 255, 255, 0.55);
+      border-top-color: rgba(255, 255, 255, 0.85);
+      background: linear-gradient(145deg, rgba(255, 255, 255, 0.62) 0%, rgba(255, 255, 255, 0.32) 100%);
+      box-shadow: 0 4px 28px rgba(120, 70, 40, 0.12), inset 0 1px 0 rgba(255, 255, 255, 0.85);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      padding: 12px 26px;
+      border-radius: 10px;
+      text-decoration: none;
+      position: relative;
+      overflow: hidden;
+      transition: border-color .3s, box-shadow .3s, color .3s, background .3s, transform .2s;
+    }
+
+    footer .foot-cta::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: radial-gradient(circle at var(--mx, 50%) var(--my, 50%), rgba(155, 106, 16, 0.12) 0%, transparent 55%);
+      pointer-events: none;
+      opacity: 0;
+      transition: opacity .3s;
+      z-index: 1;
+    }
+
+    footer .foot-cta:hover::before {
+      opacity: 1;
+    }
+
+    footer .foot-cta:hover {
+      border-color: rgba(155, 106, 16, 0.35);
+      box-shadow: 0 10px 40px rgba(155, 106, 16, 0.16), inset 0 1px 0 rgba(255, 255, 255, 0.95);
+      transform: translateY(-2px);
+      color: var(--gold);
+    }
+
+    .foot-buttons {
+      display: flex;
+      justify-content: center;
+      gap: 12px;
+      margin-bottom: 20px;
+      flex-wrap: wrap;
+    }
+
+    footer a {
+      color: var(--gold);
+      text-decoration: none;
+    }
+
+    footer a:hover {
+      text-decoration: underline;
+    }
+  </style>
+</head>
+
+<body>
+
+  <!-- GRAIN OVERLAY -->
+  <div id="marble-bg"></div>
+
+  <!-- NAV -->
+  <nav id="nav">
+    <a href="#hero" class="nav-logo">Panim LipSync</a>
+    <div class="nav-links">
+      <a href="#whats-new">New</a>
+      <a href="#modes">Modes</a>
+      <a href="#features">Features</a>
+      <a href="#how">Workflow</a>
+    </div>
+  </nav>
+
+  <!-- ─── HERO ─── -->
+  <section id="hero">
+    <video class="hero-video" autoplay muted loop playsinline poster="">
+      <source src="media/hero-loop.mp4" type="video/mp4">
+    </video>
+    <div class="hero-glow"></div>
+    <div class="hero-content">
+      <h1>Panim LipSync V2</h1>
+      <p class="hero-sub">AI lip sync for Blender, from audio to animated mouth in minutes.</p>
+      <div class="trust-strip reveal" aria-label="Panim quick facts">
+        <div class="trust-list">
+          <span class="trust-pill">Runs locally</span>
+          <span class="trust-pill">No cloud service</span>
+          <span class="trust-pill">Blender 4.1-5.0</span>
+          <span class="trust-pill">Shape Keys, Bones, ARKit</span>
+          <span class="trust-pill">Batch mode</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <div class="divider"></div>
+
+  <!-- ─── WHAT'S NEW ─── -->
+  <section id="whats-new" class="wrap">
+    <div class="reveal">
+      <h2 class="stitle">What's New in V2.0</h2>
+      <p class="sdesc">The biggest update yet. <strong>Tap any tab</strong> to explore the new features.</p>
+    </div>
+
+    <div class="wn-tabs reveal" id="wnTabs">
+      <div class="wn-tab-row">
+        <button class="wn-tab active" data-tab="engine">Allosaurus Engine</button>
+        <button class="wn-tab" data-tab="postproc">Post Processing</button>
+        <button class="wn-tab" data-tab="refine">Refinement Panel</button>
+      </div>
+      <div class="wn-tab-row">
+        <button class="wn-tab" data-tab="viseme">Binary Viseme</button>
+        <button class="wn-tab" data-tab="blinks">Eye Blinks</button>
+      </div>
+    </div>
+
+    <!-- Allosaurus Engine -->
+    <div class="frow wn-panel active stagger-reveal" id="panel-engine">
+      <h3 class="ftitle">Allosaurus Engine</h3>
+      <div class="media-box ratio-16-9">
+        <div class="media-bar">
+          <span class="dot dr"></span><span class="dot dy"></span><span class="dot dg"></span>
+        </div>
+        <div class="media-body">
+          <video autoplay muted loop playsinline>
+            <source src="media/demo-engine.mp4" type="video/mp4">
+          </video>
+        </div>
+      </div>
+      <div class="ftext">
+        <p>Whisper and Allosaurus now side by side. Whisper estimates phonemes from speech-to-text. Allosaurus detects
+          them directly from audio acoustics, more precise, and supports 2,000+ languages.</p>
+        <ul class="checklist">
+          <li>Whisper for clear speech in common languages</li>
+          <li>Allosaurus for direct acoustic detection</li>
+          <li>Install one or both, switch anytime</li>
+          <li>Works across all three animation modes</li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- Binary Viseme -->
+    <div class="frow wn-panel stagger-reveal" id="panel-viseme">
+      <h3 class="ftitle">Binary Dominant Viseme</h3>
+      <div class="media-box ratio-16-9">
+        <div class="media-bar">
+          <span class="dot dr"></span><span class="dot dy"></span><span class="dot dg"></span>
+        </div>
+        <div class="media-body">
+          <video autoplay muted loop playsinline>
+            <source src="media/demo-viseme.mp4" type="video/mp4">
+          </video>
+        </div>
+      </div>
+      <div class="ftext">
+        <p>Only the dominant viseme gets set to 1. Everything else drops to 0. A hard switch between mouth shapes that
+          gives a clean, snappy 2D-style animation feel, great for stylized or cartoon characters.</p>
+        <p>Available for Shape Keys and Bone modes. Can be toggled per-project in Processing Options.</p>
+      </div>
+    </div>
+
+    <!-- Post Processing -->
+    <div class="frow wn-panel stagger-reveal" id="panel-postproc">
+      <h3 class="ftitle">Post Processing</h3>
+      <div class="media-box ratio-16-9">
+        <div class="media-bar">
+          <span class="dot dr"></span><span class="dot dy"></span><span class="dot dg"></span>
+        </div>
+        <div class="media-body">
+          <video autoplay muted loop playsinline>
+            <source src="media/demo-postproc.mp4" type="video/mp4">
+          </video>
+        </div>
+      </div>
+      <div class="ftext">
+        <p>A dedicated panel handles Butterworth filter smoothing for softer keyframe curves, and animation transfer
+          (copy, paste) between compatible characters.</p>
+        <p>Zero extra setup needed. Apply smoothing and transfer directly after generating your animation.</p>
+      </div>
+    </div>
+
+    <!-- Eye Blinks -->
+    <div class="frow wn-panel stagger-reveal" id="panel-blinks">
+      <h3 class="ftitle">Eye Blinks</h3>
+      <div class="media-box ratio-16-9">
+        <div class="media-bar">
+          <span class="dot dr"></span><span class="dot dy"></span><span class="dot dg"></span>
+        </div>
+        <div class="media-body">
+          <video autoplay muted loop playsinline>
+            <source src="media/demo-blinks.mp4" type="video/mp4">
+          </video>
+        </div>
+      </div>
+      <div class="ftext">
+        <p>Randomized blink animations generated automatically across all animation modes. No manual keyframing, no
+          extra setup.</p>
+        <p>The Eye Blinks panel lets you control blink frequency and intensity to match your character's personality.
+        </p>
+      </div>
+    </div>
+
+    <!-- Refinement Panel -->
+    <div class="frow wn-panel stagger-reveal" id="panel-refine">
+      <h3 class="ftitle">Refinement Panel</h3>
+      <div class="media-box ratio-16-9">
+        <div class="media-bar">
+          <span class="dot dr"></span><span class="dot dy"></span><span class="dot dg"></span>
+        </div>
+        <div class="media-body">
+          <video autoplay muted loop playsinline>
+            <source src="media/demo-refine.mp4" type="video/mp4">
+          </video>
+        </div>
+      </div>
+      <div class="ftext">
+        <p>After generating, navigate and inspect each phoneme keyframe individually. Replace, reassign, or remove
+          specific mouth shapes without re-processing the full audio.</p>
+        <p>Available for Shape Keys mode only.</p>
+      </div>
+    </div>
+  </section>
+
+  <div class="divider"></div>
+
+  <!-- ─── ANIMATION MODES ─── -->
+  <section id="modes" class="wrap">
+    <div class="reveal">
+      <h2 class="stitle">Works with <em>your</em> rig.</h2>
+      <p class="sdesc">Shape keys, bone actions, or ARKit blendshapes, Panim adapts to whatever your character uses.</p>
+    </div>
+    <div class="shared-card reveal">
+      <div class="shared-label">All modes include</div>
+      <div class="shared-pills">
+        <span class="trust-pill">Whisper + Allosaurus</span>
+        <span class="trust-pill">Batch processing</span>
+        <span class="trust-pill">Auto eye blink</span>
+        <span class="trust-pill">Local processing</span>
+        <span class="trust-pill">Post-processing smoothing</span>
+      </div>
+    </div>
+    <div class="modes-grid stagger-reveal">
+      <div class="mode-card">
+        <h4>Shape Keys</h4>
+        <ul class="mode-list">
+          <li>Auto shape key mapping</li>
+          <li>Refinement Panel</li>
+          <li>Copy and Paste</li>
+          <li>Binary Viseme</li>
+        </ul>
+      </div>
+      <div class="mode-card">
+        <h4>Bone Actions</h4>
+        <ul class="mode-list">
+          <li>Action-based mapping</li>
+          <li>Visible bones only</li>
+          <li>Full action support</li>
+          <li>Binary Viseme</li>
+        </ul>
+      </div>
+      <div class="mode-card">
+        <h4>ARKit</h4>
+        <ul class="mode-list">
+          <li>Visual mapping</li>
+          <li>Multi-shape categories</li>
+          <li>Jaw intensity sliders</li>
+          <li>ARKit blendshape workflow</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <div class="divider"></div>
+
+  <!-- ─── FEATURES ─── -->
+  <section id="audience" class="wrap">
+    <div class="reveal">
+      <h2 class="stitle">Built for character dialogue.</h2>
+      <p class="sdesc">Panim is made for Blender artists who need fast lip sync without rebuilding their rig workflow.
+      </p>
+    </div>
+    <div class="audience-grid stagger-reveal">
+      <div class="audience-card">
+        <h4>Character animators</h4>
+        <p>Generate mouth animation from audio for shape keys, bone actions, or ARKit rigs without changing how your
+          character is built.</p>
+      </div>
+      <div class="audience-card">
+        <h4>Dialogue scenes</h4>
+        <p>Batch process multiple characters and audio clips with frame markers, built for scenes with more than one
+          speaker.</p>
+      </div>
+      <div class="audience-card">
+        <h4>Stylized rigs</h4>
+        <p>Use smooth blending for natural motion or Binary Viseme mode for clean, readable cartoon-style mouth shapes.
+        </p>
+      </div>
+    </div>
+  </section>
+
+  <div class="divider"></div>
+
+  <section id="features" class="wrap">
+    <div class="reveal">
+      <h2 class="stitle">Every detail covered.</h2>
+      <p class="sdesc">From multilingual audio to production-ready bone rigs, Panim gives you the tools to do it right.
+      </p>
+    </div>
+
+    <!-- Multilingual -->
+    <div class="frow reveal">
+      <div class="feature-copy">
+        <h3 class="ftitle">Multilingual Support</h3>
+        <div class="ftext">
+          <p>Allosaurus uses universal IPA phoneme recognition across 2,000+ languages, no language configuration
+            needed. Whisper supports dozens of the most common languages with a configurable language setting.</p>
+          <p>Switch engines freely depending on the audio you're working with.</p>
+        </div>
+      </div>
+      <div class="media-box">
+        <div class="media-bar">
+          <span class="dot dr"></span><span class="dot dy"></span><span class="dot dg"></span>
+
+        </div>
+        <div class="media-body">
+          <video autoplay muted loop playsinline>
+            <source src="media/demo-multilingual.mp4" type="video/mp4">
+          </video>
+        </div>
+      </div>
+    </div>
+
+    <!-- Flexible Mapping -->
+    <div class="frow rev reveal">
+      <div class="feature-copy">
+        <h3 class="ftitle">Flexible Mapping</h3>
+        <div class="ftext">
+          <p>Each phoneme group points to the specific blend shapes or bone actions in your rig. Set it up once and
+            reuse on every audio file.</p>
+          <p>Supports Shape Key, Bone, and ARKit modes with auto-detection for standard naming or manual override for
+            any custom rig.</p>
+        </div>
+      </div>
+      <div class="media-box">
+        <div class="media-bar">
+          <span class="dot dr"></span><span class="dot dy"></span><span class="dot dg"></span>
+
+        </div>
+        <div class="media-body">
+          <video autoplay muted loop playsinline>
+            <source src="media/demo-mapping.mp4" type="video/mp4">
+          </video>
+        </div>
+      </div>
+    </div>
+
+    <!-- Batch mode -->
+    <div class="frow reveal">
+      <div class="feature-copy">
+        <h3 class="ftitle">Animate multiple characters at once</h3>
+        <div class="ftext">
+          <p>Add multiple characters, assign individual audio clips with frame markers, and process them all in a single
+            click. Built for scenes with more than one speaking character.</p>
+        </div>
+      </div>
+      <div class="media-box">
+        <div class="media-bar">
+          <span class="dot dr"></span><span class="dot dy"></span><span class="dot dg"></span>
+
+        </div>
+        <div class="media-body">
+          <video autoplay muted loop playsinline>
+            <source src="media/demo-batch.mp4" type="video/mp4">
+          </video>
+        </div>
+      </div>
+    </div>
+
+  </section>
+
+  <div class="divider"></div>
+
+  <!-- Value line -->
+  <section class="wrap">
+    <p class="value-line reveal"><strong>Built for Blender character rigs:</strong> local AI phoneme detection, Shape Keys,
+      Bones, ARKit, batch dialogue, and post-processing tools in one workflow.</p>
+  </section>
+
+  <div class="divider"></div>
+
+  <!-- Changelog -->
+  <section id="changelog" class="wrap">
+    <div class="reveal">
+      <h2 class="stitle">Changelog for V2.0</h2>
+    </div>
+    <div class="cl-wrap reveal">
+      <div class="cl-scroll-area">
+        <div class="cl-track">
+          <div class="cl-card">
+            <div class="cl-card-header">
+              <span class="cl-card-num">01 —</span>
+              <span class="cl-card-badge l-new">New</span>
+            </div>
+            <h4>Allosaurus Engine</h4>
+            <p>Direct acoustic phoneme detection from audio. Supports 2000+ languages out of the box.</p>
+          </div>
+          <div class="cl-card">
+            <div class="cl-card-header">
+              <span class="cl-card-num">02 —</span>
+              <span class="cl-card-badge l-new">New</span>
+            </div>
+            <h4>Binary Viseme</h4>
+            <p>Hard switch between mouth shapes. Only the dominant viseme activates at full value.</p>
+          </div>
+          <div class="cl-card">
+            <div class="cl-card-header">
+              <span class="cl-card-num">03 —</span>
+              <span class="cl-card-badge l-new">New</span>
+            </div>
+            <h4>Post-Processing</h4>
+            <p>Butterworth smoothing, animation transfer, and delete controls in one panel.</p>
+          </div>
+          <div class="cl-card">
+            <div class="cl-card-header">
+              <span class="cl-card-num">04 —</span>
+              <span class="cl-card-badge l-new">New</span>
+            </div>
+            <h4>Eye Blinks</h4>
+            <p>Randomized blink generation with auto-detect across all animation modes.</p>
+          </div>
+          <div class="cl-card">
+            <div class="cl-card-header">
+              <span class="cl-card-num">05 —</span>
+              <span class="cl-card-badge l-new">New</span>
+            </div>
+            <h4>Refinement</h4>
+            <p>Navigate and replace any phoneme keyframe after baking the animation.</p>
+          </div>
+          <div class="cl-card">
+            <div class="cl-card-header">
+              <span class="cl-card-num">06 —</span>
+              <span class="cl-card-badge l-gold">Improved</span>
+            </div>
+            <h4>Bone Performance</h4>
+            <p>Visible bones only by default. Much faster performance on complex rigs.</p>
+          </div>
+          <div class="cl-card">
+            <div class="cl-card-header">
+              <span class="cl-card-num">07 —</span>
+              <span class="cl-card-badge l-gold">Improved</span>
+            </div>
+            <h4>UI Cleanup</h4>
+            <p>Icon-only toolbar with dedicated panels for a cleaner workspace.</p>
+          </div>
+          <div class="cl-card">
+            <div class="cl-card-header">
+              <span class="cl-card-num">08 —</span>
+              <span class="cl-card-badge l-red">Fixed</span>
+            </div>
+            <h4>Windows Install</h4>
+            <p>Dependencies survive Blender restart. scipy installs safely with --no-deps.</p>
+          </div>
+        </div>
+      </div>
+      <button class="cl-prev" type="button" aria-label="Show previous changelog items">&lsaquo;</button>
+      <button class="cl-next" type="button" aria-label="Show more changelog items">&rsaquo;</button>
+    </div>
+  </section>
+
+  <div class="divider"></div>
+
+  <!-- ─── HOW IT WORKS ─── -->
+  <section id="how" class="wrap">
+    <div class="reveal">
+      <h2 class="stitle">Three steps.</h2>
+      <p class="sdesc">From raw audio to fully animated mouth, done in minutes, or even seconds.</p>
+    </div>
+    <div class="steps stagger-reveal">
+      <div class="step-card">
+        <h4>Load Audio</h4>
+        <p>Import MP3, WAV, OGG, FLAC, M4A, or AAC. Works in any language with no extra configuration.</p>
+      </div>
+      <div class="step-card">
+        <h4>Process</h4>
+        <p>Panim detects phonemes locally using your chosen engine and maps them to your rig's visemes.</p>
+      </div>
+      <div class="step-card">
+        <h4>Animate</h4>
+        <p>Shape keys or bone actions get keyframed automatically. Refine individual frames as needed.</p>
+      </div>
+    </div>
+  </section>
+
+  <div class="divider"></div>
+
+
+
+  <!-- ─── REQUIREMENTS ─── -->
+  <section class="wrap">
+    <div class="reveal">
+      <h2 class="stitle">What you need.</h2>
+      <p class="sdesc">Panim runs entirely on your machine. No cloud service, no internet required after the initial
+        model download.</p>
+    </div>
+    <div class="req-grid stagger-reveal">
+      <div class="req-card">
+        <h4>System</h4>
+        <ul class="req-list">
+          <li><b>Blender</b> 4.1 to 5.0</li>
+          <li><b>RAM</b> 8GB+ recommended (16GB+ for Whisper Large)</li>
+          <li><b>Storage</b> ~5GB for models and dependencies</li>
+          <li><b>Windows</b> VC++ 2015–2022 Redistributable x64</li>
+          <li><b>Mac</b> Limited support, not actively tested</li>
+        </ul>
+      </div>
+      <div class="req-card">
+        <h4>Engines</h4>
+        <ul class="req-list">
+          <li><b>Whisper</b> ~74MB–2.9GB depending on model size</li>
+          <li><b>Allosaurus</b> ~100MB fixed model</li>
+          <li><b>Internet</b> Only needed once to download the model</li>
+          <li><b>GPU</b> CUDA and Metal accelerated automatically if available</li>
+          <li><b>Audio</b> MP3, WAV, OGG, FLAC, M4A, AAC</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <!-- ─── COMPATIBILITY NOTES ─── -->
+  <section class="wrap" style="margin-bottom:80px; margin-top:48px">
+    <div class="note-block reveal">
+      <h4>Compatibility Notes</h4>
+      <p><strong>Mac support</strong> is limited and not actively tested. Windows is the primary supported platform.</p>
+      <p><strong>Windows</strong> requires a one-time Blender restart after installing dependencies.</p>
+      <p><strong>Internet</strong> is only required once per engine to download the AI model. After that, everything
+        runs locally.</p>
+      <p><strong>Refinement Panel</strong> is available for Shape Keys mode only, not for Bone Actions or ARKit.</p>
+    </div>
+  </section>
+
+  <!-- ─── THANKS TO ─── -->
+  <section class="wrap" style="margin-bottom:80px">
+    <div class="reveal">
+      <h2 class="stitle">Thanks To</h2>
+    </div>
+    <div class="credits-list reveal">
+      <p>"<a href="https://skfb.ly/oysZF" target="_blank" rel="noopener noreferrer">character_02</a>" by BuuMya is licensed under Creative Commons Attribution (Sketchfab).</p>
+      <p>"<a href="https://blendswap.com/blend/12958" target="_blank" rel="noopener noreferrer">2D mouth with shape keys phonemes</a>" by myname, from BlendSwap.com (BlendSwap).</p>
+      <p>"<a href="https://studio.blender.org/characters/ellie/v1/" target="_blank" rel="noopener noreferrer">Ellie - Character Rig</a>" from Blender Studio (Character Link).</p>
+      <p>"<a href="https://studio.blender.org/characters/victoria/v1/" target="_blank" rel="noopener noreferrer">Victoria - Character Rig</a>" from Blender Studio (Character Link) (Temporarily displayed in the video).</p>
+    </div>
+    <p class="sdesc reveal" style="margin-top:24px; margin-bottom:0; max-width:none">To allow characters to be used for demonstration of the tool.</p>
+    <div class="note-block reveal" style="margin-top:24px">
+      <h4>Important</h4>
+      <p>The characters used in demonstrations and examples are not included with this addon. If you want to test with similar characters, you can download them from the sources listed in the "Thanks to" section above.</p>
+    </div>
+  </section>
+
+  <!-- ─── FOOTER ─── -->
+  <footer>
+    <p class="foot-thanks reveal"><em>Thank you!</em></p>
+    <div class="foot-buttons reveal">
+      <a href="https://www.youtube.com/@panim_official" class="foot-cta" target="_blank"
+        rel="noopener noreferrer">YouTube</a>
+      <a href="https://discord.gg/HSgwJAFJwW" class="foot-cta" target="_blank" rel="noopener noreferrer">Discord</a>
+      <a href="https://superhivemarket.com/creators/panim" class="foot-cta" target="_blank"
+        rel="noopener noreferrer">Superhive Store</a>
+    </div>
+    <p class="reveal">Blender 4.1 to 5.0 &nbsp;·&nbsp; V2</p>
+  </footer>
+
+  <!-- ─── SCRIPTS ─── -->
+  <script>
+    /* Sticky nav */
+    const nav = document.getElementById('nav');
+    window.addEventListener('scroll', () => nav.classList.toggle('scrolled', scrollY > 20), { passive: true });
+
+    /* Nav link smooth scroll (fixes iframe anchor issues) */
+    document.querySelectorAll('.nav-links a[href^="#"], .nav-logo[href^="#"]').forEach(link => {
+      link.addEventListener('click', e => {
+        e.preventDefault();
+        const target = document.querySelector(link.getAttribute('href'));
+        if (target) target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      });
+    });
+
+    /* Scroll reveal */
+    const io = new IntersectionObserver(
+      entries => entries.forEach(e => { if (e.isIntersecting) { e.target.classList.add('visible'); io.unobserve(e.target); } }),
+      { threshold: 0.07 }
+    );
+    document.querySelectorAll('.reveal, .stagger-reveal').forEach(el => io.observe(el));
+
+    /* Hero glow parallax */
+    const heroGlow = document.querySelector('.hero-glow');
+    const heroSection = document.getElementById('hero');
+    if (heroSection && heroGlow) {
+      heroSection.addEventListener('mousemove', (e) => {
+        const rect = heroSection.getBoundingClientRect();
+        const x = (e.clientX - rect.left) / rect.width;
+        const y = (e.clientY - rect.top) / rect.height;
+        const moveX = (0.5 - x) * 6;
+        const moveY = (0.5 - y) * 5;
+        heroGlow.style.background = `radial-gradient(ellipse 60% 50% at ${50 + moveX}% ${-5 + moveY}%, rgba(255,255,255,0.45) 0%, transparent 60%)`;
+      });
+    }
+
+    /* ─── Changelog Marquee ─── */
+    (function () {
+      const track = document.querySelector('.cl-track');
+      const area = document.querySelector('.cl-scroll-area');
+      const cards = track ? track.querySelectorAll('.cl-card') : [];
+      if (!track || !area || !cards.length) return;
+
+      const staticMarquee = window.matchMedia('(max-width: 680px), (pointer: coarse), (prefers-reduced-motion: reduce)').matches;
+      if (staticMarquee) {
+        area.classList.add('cl-static');
+        const prev = document.querySelector('.cl-prev');
+        const next = document.querySelector('.cl-next');
+        const scrollAmount = () => {
+          const card = cards[0];
+          const gap = parseFloat(window.getComputedStyle(track).gap) || 18;
+          return card ? card.offsetWidth + gap : area.clientWidth * 0.75;
+        };
+        if (prev) {
+          prev.addEventListener('click', () => {
+            area.scrollBy({ left: -scrollAmount(), behavior: 'smooth' });
+          });
+        }
+        if (next) {
+          next.addEventListener('click', () => {
+            area.scrollBy({ left: scrollAmount(), behavior: 'smooth' });
+          });
+        }
+        return;
+      }
+
+      /* Clone cards for seamless loop */
+      cards.forEach(card => track.appendChild(card.cloneNode(true)));
+
+      /* Calculate total width ONCE for a precise loop */
+      const cardW = cards[0].offsetWidth;
+      const gap = parseFloat(window.getComputedStyle(track).gap) || 18;
+      const setWidth = (cardW + gap) * cards.length;
+
+      let currentPos = 0;
+      const speed = 0.5;
+      let isDragging = false;
+      let startX = 0;
+      let scrollStart = 0;
+      let velocity = 0;
+      let rafId = null;
+
+      function update() {
+        if (!isDragging) {
+          currentPos -= speed;
+          if (Math.abs(velocity) > 0.1) {
+            currentPos += velocity;
+            velocity *= 0.94;
+          }
+        }
+
+        /* Seamless wrap */
+        if (currentPos <= -setWidth) currentPos += setWidth;
+        else if (currentPos > 0) currentPos -= setWidth;
+
+        track.style.transform = `translateX(${currentPos}px)`;
+        rafId = requestAnimationFrame(update);
+      }
+
+      /* Drag */
+      function onStart(e) {
+        isDragging = true;
+        startX = (e.pageX || e.touches[0].pageX);
+        scrollStart = currentPos;
+        velocity = 0;
+        track.style.transition = 'none';
+      }
+      function onMove(e) {
+        if (!isDragging) return;
+        const x = (e.pageX || e.touches[0].pageX);
+        const walk = x - startX;
+        const prev = currentPos;
+        currentPos = scrollStart + walk;
+        velocity = currentPos - prev;
+      }
+      function onEnd() {
+        isDragging = false;
+      }
+
+      area.addEventListener('mousedown', onStart);
+      area.addEventListener('touchstart', onStart, { passive: true });
+      window.addEventListener('mousemove', onMove);
+      window.addEventListener('touchmove', onMove, { passive: true });
+      window.addEventListener('mouseup', onEnd);
+      window.addEventListener('touchend', onEnd);
+
+      /* Mouse-following glow on each card */
+      const allCards = track.querySelectorAll('.cl-card');
+      allCards.forEach(card => {
+        card.style.setProperty('--mx', '50%');
+        card.style.setProperty('--my', '50%');
+        card.addEventListener('mousemove', (e) => {
+          const rect = card.getBoundingClientRect();
+          const x = ((e.clientX - rect.left) / rect.width) * 100;
+          const y = ((e.clientY - rect.top) / rect.height) * 100;
+          card.style.setProperty('--mx', x + '%');
+          card.style.setProperty('--my', y + '%');
+        });
+        card.addEventListener('mouseleave', () => {
+          card.style.setProperty('--mx', '50%');
+          card.style.setProperty('--my', '50%');
+        });
+      });
+
+      /* Pause when not in viewport */
+      const visObserver = new IntersectionObserver(
+        entries => entries.forEach(e => {
+          if (e.isIntersecting && !rafId) rafId = requestAnimationFrame(update);
+          else if (!e.isIntersecting && rafId) { cancelAnimationFrame(rafId); rafId = null; }
+        }),
+        { threshold: 0.05 }
+      );
+      visObserver.observe(area);
+
+      update();
+    })();
+
+    /* ─── What's New Tabs ─── */
+    (function () {
+      const tabs = document.querySelectorAll('.wn-tab');
+      const panels = document.querySelectorAll('.wn-panel');
+      if (!tabs.length) return;
+
+      tabs.forEach(tab => {
+        tab.addEventListener('click', () => {
+          const target = tab.dataset.tab;
+
+          tabs.forEach(t => t.classList.remove('active'));
+          tab.classList.add('active');
+
+          panels.forEach(p => {
+            p.querySelectorAll('video').forEach(v => {
+              v.pause(); v.currentTime = 0; v.muted = true;
+            });
+            p.querySelectorAll('.mute-btn').forEach(b => {
+              b.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><line x1="23" y1="9" x2="17" y2="15"/><line x1="17" y1="9" x2="23" y2="15"/></svg>';
+            });
+            const frow = p.querySelector('.frow');
+            p.classList.remove('active');
+            if (frow) frow.classList.remove('visible');
+            if (p.id === 'panel-' + target) {
+              p.classList.add('active');
+              if (frow) {
+                void frow.offsetWidth;
+                frow.classList.add('visible');
+              }
+              p.querySelectorAll('video').forEach(v => v.play());
+            }
+          });
+        });
+      });
+    })();
+
+    /* ─── Audio toggle for demo videos ─── */
+    document.querySelectorAll('.media-body').forEach(body => {
+      const video = body.querySelector('video');
+      if (!video) return;
+      const box = body.closest('.media-box');
+      if (!box) return;
+      const btn = document.createElement('button');
+      btn.className = 'mute-btn';
+      btn.setAttribute('aria-label', 'Toggle audio');
+      btn.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><line x1="23" y1="9" x2="17" y2="15"/><line x1="17" y1="9" x2="23" y2="15"/></svg>';
+      box.appendChild(btn);
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        video.muted = !video.muted;
+        btn.innerHTML = video.muted
+          ? '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><line x1="23" y1="9" x2="17" y2="15"/><line x1="17" y1="9" x2="23" y2="15"/></svg>'
+          : '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"/></svg>';
+      });
+    });
+
+    /* ─── Fullscreen toggle for demo videos ─── */
+    document.querySelectorAll('.media-body').forEach(body => {
+      const video = body.querySelector('video');
+      if (!video) return;
+      const box = body.closest('.media-box');
+      if (!box) return;
+      const btn = document.createElement('button');
+      btn.className = 'fs-btn';
+      btn.setAttribute('aria-label', 'Toggle fullscreen');
+      btn.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 3 21 3 21 9"/><polyline points="9 21 3 21 3 15"/><line x1="21" y1="3" x2="14" y2="10"/><line x1="3" y1="21" x2="10" y2="14"/></svg>';
+      box.appendChild(btn);
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        if (document.fullscreenElement) {
+          document.exitFullscreen();
+        } else {
+          box.dataset.fsAspect = getComputedStyle(box).aspectRatio;
+          box.style.aspectRatio = 'auto';
+          box.style.width = '100%';
+          box.style.height = '100%';
+          box.style.maxWidth = '100%';
+          box.style.maxHeight = '100%';
+          video.style.objectFit = 'contain';
+          box.requestFullscreen();
+        }
+      });
+    });
+
+    document.addEventListener('fullscreenchange', () => {
+      if (!document.fullscreenElement) {
+        document.querySelectorAll('.media-box[data-fs-aspect]').forEach(box => {
+          box.style.aspectRatio = box.dataset.fsAspect;
+          box.style.width = '';
+          box.style.height = '';
+          box.style.maxWidth = '';
+          box.style.maxHeight = '';
+          const video = box.querySelector('video');
+          if (video) video.style.objectFit = 'cover';
+          delete box.dataset.fsAspect;
+        });
+      }
+    });
+
+    /* Cursor-following glow for all static cards */
+    document.querySelectorAll('.mode-card, .audience-card, .step-card, .req-card, .media-box, .wn-tab, .trust-pill, .foot-cta').forEach(card => {
+      card.style.setProperty('--mx', '50%');
+      card.style.setProperty('--my', '50%');
+      card.addEventListener('mousemove', (e) => {
+        const rect = card.getBoundingClientRect();
+        const x = ((e.clientX - rect.left) / rect.width) * 100;
+        const y = ((e.clientY - rect.top) / rect.height) * 100;
+        card.style.setProperty('--mx', x + '%');
+        card.style.setProperty('--my', y + '%');
+      });
+      card.addEventListener('mouseleave', () => {
+        card.style.setProperty('--mx', '50%');
+        card.style.setProperty('--my', '50%');
+      });
+    });
+
+  </script>
+</body>
+
+</html>
