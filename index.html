@@ -825,6 +825,30 @@
       transition: opacity .25s;
     }
 
+    /* ─── PSEUDO FULLSCREEN FALLBACK ─── */
+    .media-box.pseudo-fullscreen {
+      position: fixed !important;
+      top: 0 !important;
+      left: 0 !important;
+      width: 100vw !important;
+      height: 100vh !important;
+      max-width: 100vw !important;
+      max-height: 100vh !important;
+      z-index: 999999 !important;
+      background: #000 !important;
+      aspect-ratio: auto !important;
+      border-radius: 0 !important;
+      margin: 0 !important;
+      padding: 0 !important;
+    }
+
+    .media-box.pseudo-fullscreen .media-body video {
+      width: 100% !important;
+      height: 100% !important;
+      object-fit: contain !important;
+      border-radius: 0 !important;
+    }
+
     .media-box:hover .mute-btn,
     .media-box:hover .fs-btn,
     .media-box:focus-within .mute-btn,
@@ -2542,21 +2566,57 @@
     });
 
     /* ─── Fullscreen toggle for demo videos ─── */
-    document.querySelectorAll('.media-body').forEach(body => {
-      const video = body.querySelector('video');
-      if (!video) return;
-      const box = body.closest('.media-box');
-      if (!box) return;
-      const btn = document.createElement('button');
-      btn.className = 'fs-btn';
-      btn.setAttribute('aria-label', 'Toggle fullscreen');
-      btn.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 3 21 3 21 9"/><polyline points="9 21 3 21 3 15"/><line x1="21" y1="3" x2="14" y2="10"/><line x1="3" y1="21" x2="10" y2="14"/></svg>';
-      box.appendChild(btn);
-      btn.addEventListener('click', (e) => {
-        e.stopPropagation();
-        if (document.fullscreenElement) {
-          document.exitFullscreen()['catch'](function () {});
-        } else {
+    (function() {
+      const fsEnterIcon = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 3 21 3 21 9"/><polyline points="9 21 3 21 3 15"/><line x1="21" y1="3" x2="14" y2="10"/><line x1="3" y1="21" x2="10" y2="14"/></svg>';
+      const fsExitIcon = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="4 14 10 14 10 20"/><polyline points="20 10 14 10 14 4"/><line x1="14" y1="10" x2="21" y2="3"/><line x1="10" y1="14" x2="3" y2="21"/></svg>';
+
+      function enterPseudoFullscreen(box, video, btn) {
+        box.dataset.fsAspect = getComputedStyle(box).aspectRatio;
+        box.classList.add('pseudo-fullscreen');
+        if (video) video.style.objectFit = 'contain';
+        if (btn) btn.innerHTML = fsExitIcon;
+      }
+
+      function exitPseudoFullscreen(box, video, btn) {
+        box.classList.remove('pseudo-fullscreen');
+        if (video) video.style.objectFit = 'cover';
+        if (btn) btn.innerHTML = fsEnterIcon;
+        delete box.dataset.fsAspect;
+      }
+
+      document.querySelectorAll('.media-body').forEach(body => {
+        const video = body.querySelector('video');
+        if (!video) return;
+        const box = body.closest('.media-box');
+        if (!box) return;
+        const btn = document.createElement('button');
+        btn.className = 'fs-btn';
+        btn.setAttribute('aria-label', 'Toggle fullscreen');
+        btn.innerHTML = fsEnterIcon;
+        box.appendChild(btn);
+
+        btn.addEventListener('click', (e) => {
+          e.stopPropagation();
+
+          // If already in pseudo-fullscreen, exit it
+          if (box.classList.contains('pseudo-fullscreen')) {
+            exitPseudoFullscreen(box, video, btn);
+            return;
+          }
+
+          // If already in native fullscreen, exit it
+          if (document.fullscreenElement) {
+            document.exitFullscreen();
+            return;
+          }
+
+          // Pre-check if fullscreen is allowed by document policy
+          if (!document.fullscreenEnabled) {
+            enterPseudoFullscreen(box, video, btn);
+            return;
+          }
+
+          // Try native fullscreen
           box.dataset.fsAspect = getComputedStyle(box).aspectRatio;
           box.style.aspectRatio = 'auto';
           box.style.width = '100%';
@@ -2564,30 +2624,53 @@
           box.style.maxWidth = '100%';
           box.style.maxHeight = '100%';
           video.style.objectFit = 'contain';
-          var fsPromise = box.requestFullscreen();
-          if (fsPromise) {
-            fsPromise['catch'](function () {
-              if (video.webkitEnterFullscreen) { video.webkitEnterFullscreen(); }
-            });
-          }
+          btn.innerHTML = fsExitIcon;
+
+          box.requestFullscreen().catch(err => {
+            console.warn("Native fullscreen failed, falling back to pseudo-fullscreen:", err);
+            // Restore native styles
+            box.style.aspectRatio = '';
+            box.style.width = '';
+            box.style.height = '';
+            box.style.maxWidth = '';
+            box.style.maxHeight = '';
+            // Fallback to inline pseudo-fullscreen
+            enterPseudoFullscreen(box, video, btn);
+          });
+        });
+      });
+
+      // Escape key handler for pseudo-fullscreen
+      window.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') {
+          document.querySelectorAll('.media-box.pseudo-fullscreen').forEach(box => {
+            const video = box.querySelector('video');
+            const btn = box.querySelector('.fs-btn');
+            exitPseudoFullscreen(box, video, btn);
+          });
         }
       });
-    });
 
-    document.addEventListener('fullscreenchange', () => {
-      if (!document.fullscreenElement) {
-        document.querySelectorAll('.media-box[data-fs-aspect]').forEach(box => {
-          box.style.aspectRatio = box.dataset.fsAspect;
-          box.style.width = '';
-          box.style.height = '';
-          box.style.maxWidth = '';
-          box.style.maxHeight = '';
-          const video = box.querySelector('video');
-          if (video) video.style.objectFit = 'cover';
-          delete box.dataset.fsAspect;
-        });
-      }
-    });
+      // Handle native fullscreen change events
+      document.addEventListener('fullscreenchange', () => {
+        if (!document.fullscreenElement) {
+          document.querySelectorAll('.media-box[data-fs-aspect]').forEach(box => {
+            if (!box.classList.contains('pseudo-fullscreen')) {
+              box.style.aspectRatio = box.dataset.fsAspect;
+              box.style.width = '';
+              box.style.height = '';
+              box.style.maxWidth = '';
+              box.style.maxHeight = '';
+              const video = box.querySelector('video');
+              if (video) video.style.objectFit = 'cover';
+              const btn = box.querySelector('.fs-btn');
+              if (btn) btn.innerHTML = fsEnterIcon;
+              delete box.dataset.fsAspect;
+            }
+          });
+        }
+      });
+    })();
 
     /* Cursor-following glow for all static cards */
     document.querySelectorAll('.mode-card, .audience-card, .step-card, .req-card, .media-box, .wn-tab, .trust-pill, .foot-cta, .discount-code').forEach(card => {
@@ -2608,5 +2691,4 @@
 
   </script>
 </body>
-
 </html>
